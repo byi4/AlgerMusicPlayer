@@ -390,11 +390,6 @@ export function createMainWindow(icon: Electron.NativeImage): BrowserWindow {
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
-
-    // 注册快捷键 打开开发者工具
-    globalShortcut.register('CommandOrControl+Shift+I', () => {
-      mainWindow.webContents.openDevTools({ mode: 'detach' });
-    });
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
@@ -405,4 +400,28 @@ export function createMainWindow(icon: Electron.NativeImage): BrowserWindow {
   mainWindowInstance = mainWindow;
 
   return mainWindow;
+}
+
+/**
+ * 注册开发者工具快捷键
+ * 必须在 app.whenReady() 之后调用
+ */
+export function registerDevToolsShortcut() {
+  // 注册快捷键 打开/关闭开发者工具（开发环境和生产环境都可用）
+  const registered = globalShortcut.register('CommandOrControl+Shift+I', () => {
+    if (mainWindowInstance && !mainWindowInstance.isDestroyed()) {
+      const devTools = mainWindowInstance.webContents.isDevToolsOpened();
+      if (devTools) {
+        mainWindowInstance.webContents.closeDevTools();
+      } else {
+        mainWindowInstance.webContents.openDevTools({ mode: 'detach' });
+      }
+    }
+  });
+
+  if (registered) {
+    console.log('开发者工具快捷键注册成功: Ctrl+Shift+I');
+  } else {
+    console.error('开发者工具快捷键注册失败');
+  }
 }

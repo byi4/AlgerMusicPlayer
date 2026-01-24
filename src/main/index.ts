@@ -9,15 +9,20 @@ import { initializeConfig } from './modules/config';
 import { initializeFileManager } from './modules/fileManager';
 import { initializeFonts } from './modules/fonts';
 import { initializeLoginWindow } from './modules/loginWindow';
+import { initLxMusicHttp } from './modules/lxMusicHttp';
 import { initializeOtherApi } from './modules/otherApi';
 import { initializeRemoteControl } from './modules/remoteControl';
 import { initializeShortcuts, registerShortcuts } from './modules/shortcuts';
 import { initializeTray, updateCurrentSong, updatePlayState, updateTrayMenu } from './modules/tray';
 import { setupUpdateHandlers } from './modules/update';
-import { createMainWindow, initializeWindowManager, setAppQuitting } from './modules/window';
+import {
+  createMainWindow,
+  initializeWindowManager,
+  registerDevToolsShortcut,
+  setAppQuitting
+} from './modules/window';
 import { initWindowSizeManager } from './modules/window-size';
 import { startMusicApi } from './server';
-import { initLxMusicHttp } from './modules/lxMusicHttp';
 
 // 导入所有图标
 const iconPath = join(__dirname, '../../resources');
@@ -127,6 +132,9 @@ if (!isSingleInstance) {
     // 初始化应用
     initialize(store);
 
+    // 注册开发者工具快捷键（必须在 app.whenReady() 之后）
+    registerDevToolsShortcut();
+
     // macOS 激活应用时的处理
     app.on('activate', () => {
       if (mainWindow === null) initialize(store);
@@ -177,7 +185,6 @@ if (!isSingleInstance) {
     app.exit(0);
   });
 
-  // 获取系统架构信息
   ipcMain.on('get-arch', (event) => {
     event.returnValue = process.arch;
   });
