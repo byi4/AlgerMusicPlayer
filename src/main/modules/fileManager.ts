@@ -746,12 +746,18 @@ async function downloadMusic(
           TITLE: songInfo?.name,
           ARTIST: artistNames,
           ALBUM: songInfo?.al?.name || songInfo?.song?.album?.name || songInfo?.name || filename,
-          LYRICS: lyricsContent || '',
-          TRACKNUMBER: songInfo?.no ? String(songInfo.no) : undefined,
-          DATE: songInfo?.publishTime
-            ? new Date(songInfo.publishTime).getFullYear().toString()
-            : undefined
+          LYRICS: lyricsContent || ''
         };
+
+        // 只在有值时添加 TRACKNUMBER
+        if (songInfo?.no) {
+          tagMap.TRACKNUMBER = String(songInfo.no);
+        }
+
+        // 只在有值时添加 DATE
+        if (songInfo?.publishTime) {
+          tagMap.DATE = new Date(songInfo.publishTime).getFullYear().toString();
+        }
 
         await writeFlacTags(
           {
