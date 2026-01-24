@@ -12,6 +12,7 @@ import { computed } from 'vue';
 // 导入所有拆分的子 stores
 import { useFavoriteStore } from './favorite';
 import { useIntelligenceModeStore } from './intelligenceMode';
+import { usePersonalFMStore } from './personalFM';
 import { usePlayerCoreStore } from './playerCore';
 import { usePlaylistStore } from './playlist';
 import { type SleepTimerInfo, SleepTimerType, useSleepTimerStore } from './sleepTimer';
@@ -30,6 +31,7 @@ export const usePlayerStore = defineStore('player', () => {
   const favorite = useFavoriteStore();
   const sleepTimer = useSleepTimerStore();
   const intelligenceMode = useIntelligenceModeStore();
+  const personalFM = usePersonalFMStore();
 
   // 使用 storeToRefs 获取响应式引用
   const { play, isPlay, playMusic, playMusicUrl, musicFull, playbackRate, volume, userPlayIntent } =
@@ -43,6 +45,7 @@ export const usePlayerStore = defineStore('player', () => {
   const { sleepTimer: sleepTimerState, showSleepTimer } = storeToRefs(sleepTimer);
 
   const { isIntelligenceMode, intelligenceModeInfo } = storeToRefs(intelligenceMode);
+  const { isPersonalFMMode, personalFMList } = storeToRefs(personalFM);
 
   // ==================== Computed ====================
   const currentSong = computed(() => playerCore.currentSong);
@@ -63,6 +66,7 @@ export const usePlayerStore = defineStore('player', () => {
   const initializePlayState = async () => {
     await playerCore.initializePlayState();
     await playlist.initializePlaylist();
+    initializePersonalFM();
   };
 
   /**
@@ -70,6 +74,13 @@ export const usePlayerStore = defineStore('player', () => {
    */
   const initializeFavoriteList = async () => {
     await favorite.initializeFavoriteList();
+  };
+
+  /**
+   * 初始化私人FM状态
+   */
+  const initializePersonalFM = () => {
+    personalFM.initializePersonalFM();
   };
 
   // ==================== 返回所有状态和方法 ====================
@@ -161,8 +172,18 @@ export const usePlayerStore = defineStore('player', () => {
     // IntelligenceMode - Actions
     playIntelligenceMode: intelligenceMode.playIntelligenceMode,
 
+    // ========== 私人FM (PersonalFM) ==========
+    isPersonalFMMode,
+    personalFMList,
+
+    // PersonalFM - Actions
+    setPersonalFMMode: personalFM.setPersonalFMMode,
+    loadPersonalFMSongs: personalFM.loadPersonalFMSongs,
+    clearPersonalFMList: personalFM.clearPersonalFMList,
+
     // ========== 初始化方法 ==========
     initializePlayState,
-    initializeFavoriteList
+    initializeFavoriteList,
+    initializePersonalFM
   };
 });

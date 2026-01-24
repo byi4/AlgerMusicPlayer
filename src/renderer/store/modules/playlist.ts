@@ -11,6 +11,7 @@ import { getImgUrl } from '@/utils';
 import { performShuffle, preloadCoverImage } from '@/utils/playerUtils';
 
 import { useIntelligenceModeStore } from './intelligenceMode';
+import { usePersonalFMStore } from './personalFM';
 import { usePlayerCoreStore } from './playerCore';
 import { useSleepTimerStore } from './sleepTimer';
 
@@ -294,6 +295,7 @@ export const usePlaylistStore = defineStore(
     const clearPlayAll = async () => {
       const { audioService } = await import('@/services/audioService');
       const playerCore = usePlayerCoreStore();
+      const personalFMStore = usePersonalFMStore();
 
       audioService.pause();
       setTimeout(() => {
@@ -302,6 +304,9 @@ export const usePlaylistStore = defineStore(
         playList.value = [];
         playListIndex.value = 0;
         originalPlayList.value = [];
+        // 清除私人FM模式
+        personalFMStore.setPersonalFMMode(false);
+        personalFMStore.clearPersonalFMList();
         // 只清除 playerCore 的 localStorage（这些由 playerCore store 管理）
         localStorage.removeItem('currentPlayMusic');
         localStorage.removeItem('currentPlayMusicUrl');
@@ -371,6 +376,62 @@ export const usePlaylistStore = defineStore(
 
         const playerCore = usePlayerCoreStore();
         const sleepTimerStore = useSleepTimerStore();
+        const personalFMStore = usePersonalFMStore();
+
+        // 私人FM模式的特殊处理
+        if (personalFMStore.isPersonalFMMode) {
+          try {
+            const currentIndex = playListIndex.value;
+            const currentSong = playList.value[currentIndex];
+
+            // 如果当前歌曲是列表最后一首，需要获取新歌曲
+            if (currentIndex >= playList.value.length - 1) {
+              console.log('私人FM: 当前是最后一首，获取新歌曲');
+              const newSongs = await personalFMStore.loadPersonalFMSongs();
+              if (newSongs.length > 0) {
+                // 添加新歌曲到播放列表
+                playList.value.push(...newSongs);
+                // 移除最旧的歌曲，保持列表最多20首
+                if (playList.value.length > 20) {
+                  const removeCount = playList.value.length - 20;
+                  playList.value.splice(0, removeCount);
+
+                  // 重新找到当前歌曲在新列表中的位置
+                  const newCurrentIndex = playList.value.findIndex(
+                    (song) => song.id === currentSong.id
+                  );
+
+                  if (newCurrentIndex !== -1) {
+                    // 当前歌曲还在列表中，更新索引
+                    playListIndex.value = newCurrentIndex;
+                  } else {
+                    // 当前歌曲已被移除，索引为0（第一首）
+                    playListIndex.value = 0;
+                  }
+                }
+              }
+            }
+
+            // 播放下一首
+            const nextIndex = Math.min(playListIndex.value + 1, playList.value.length - 1);
+            if (nextIndex < playList.value.length) {
+              playListIndex.value = nextIndex;
+              const nextSong = { ...playList.value[nextIndex] };
+              const success = await playerCore.handlePlayMusic(nextSong, true);
+
+              if (success) {
+                sleepTimerStore.handleSongChange();
+              } else {
+                console.error('私人FM: 播放下一首失败');
+                playerCore.setIsPlay(false);
+                message.error(i18n.global.t('player.playFailed'));
+              }
+            }
+          } catch (error) {
+            console.error('私人FM切换下一首出错:', error);
+          }
+          return;
+        }
 
         // 检查是否超过最大连续失败次数
         if (consecutiveFailCount.value >= MAX_CONSECUTIVE_FAILS) {
@@ -470,6 +531,38 @@ export const usePlaylistStore = defineStore(
         }
 
         const playerCore = usePlayerCoreStore();
+        const personalFMStore = usePersonalFMStore();
+
+        // 私人FM模式的特殊处理
+        if (personalFMStore.isPersonalFMMode) {
+          try {
+            const currentIndex = playListIndex.value;
+
+            // 私人FM模式下，只能往前切歌（如果有的话）
+            if (currentIndex > 0) {
+              const prevIndex = currentIndex - 1;
+              playListIndex.value = prevIndex;
+              const prevSong = { ...playList.value[prevIndex] };
+              const success = await playerCore.handlePlayMusic(prevSong, true);
+
+              if (success) {
+                // 播放成功，不需要额外处理
+              } else {
+                console.error('私人FM: 播放上一首失败');
+                playerCore.setIsPlay(false);
+                message.error(i18n.global.t('player.playFailed'));
+              }
+            } else {
+              console.log('私人FM: 已经是第一首，无法往前切歌');
+              // 可以选择重新播放当前歌曲或者不做任何操作
+              const currentSong = { ...playList.value[currentIndex] };
+              await playerCore.handlePlayMusic(currentSong, true);
+            }
+          } catch (error) {
+            console.error('私人FM切换上一首出错:', error);
+          }
+          return;
+        }
         const currentIndex = playListIndex.value;
         const nowPlayListIndex =
           (playListIndex.value - 1 + playList.value.length) % playList.value.length;

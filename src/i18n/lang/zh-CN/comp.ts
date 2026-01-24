@@ -100,6 +100,10 @@ export default {
   recommendSonglist: {
     title: '本周最热音乐'
   },
+  personalFM: {
+    title: '私人FM',
+    description: '为你推荐专属音乐'
+  },
   searchBar: {
     login: '登录',
     toLogin: '去登录',

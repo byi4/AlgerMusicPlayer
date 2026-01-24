@@ -16,6 +16,35 @@ import type { Platform, SongResult } from '@/types/music';
 import { getImgUrl } from '@/utils';
 import { getImageLinearBackground } from '@/utils/linearColor';
 
+// 延迟导入以避免循环依赖
+let playlistStore: any = null;
+let personalFMStore: any = null;
+let settingsStore: any = null;
+
+const getPlaylistStore = () => {
+  if (!playlistStore) {
+    const { usePlaylistStore } = require('./playlist');
+    playlistStore = usePlaylistStore();
+  }
+  return playlistStore;
+};
+
+const getPersonalFMStore = () => {
+  if (!personalFMStore) {
+    const { usePersonalFMStore } = require('./personalFM');
+    personalFMStore = usePersonalFMStore();
+  }
+  return personalFMStore;
+};
+
+const getSettingsStore = () => {
+  if (!settingsStore) {
+    const { useSettingsStore } = require('./settings');
+    settingsStore = useSettingsStore();
+  }
+  return settingsStore;
+};
+
 const musicHistory = useMusicHistory();
 const { message } = createDiscreteApi(['message']);
 
@@ -266,10 +295,9 @@ export const usePlayerCoreStore = defineStore(
 
         // 在拆分后补充：触发预加载下一首/下下首（与 playlist store 保持一致）
         try {
-          const { usePlaylistStore } = await import('./playlist');
-          const playlistStore = usePlaylistStore();
+          const playlist = getPlaylistStore();
           // 基于当前歌曲在播放列表中的位置来预加载
-          const list = playlistStore.playList;
+          const list = playlist.playList;
           if (Array.isArray(list) && list.length > 0) {
             const idx = list.findIndex(
               (item: SongResult) =>
@@ -277,7 +305,7 @@ export const usePlayerCoreStore = defineStore(
             );
             if (idx !== -1) {
               setTimeout(() => {
-                playlistStore.preloadNextSongs(idx);
+                playlist.preloadNextSongs(idx);
               }, 3000);
             }
           }
@@ -552,9 +580,8 @@ export const usePlayerCoreStore = defineStore(
           await handlePlayMusic(updatedMusic, true);
 
           // 更新播放列表中的歌曲信息
-          const { usePlaylistStore } = await import('./playlist');
-          const playlistStore = usePlaylistStore();
-          playlistStore.updateSong(updatedMusic);
+          const playlist = getPlaylistStore();
+          playlist.updateSong(updatedMusic);
 
           return true;
         } else {
@@ -571,8 +598,7 @@ export const usePlayerCoreStore = defineStore(
      * 初始化播放状态
      */
     const initializePlayState = async () => {
-      const { useSettingsStore } = await import('./settings');
-      const settingStore = useSettingsStore();
+      const settingStore = getSettingsStore();
 
       if (playMusic.value && Object.keys(playMusic.value).length > 0) {
         try {
@@ -600,6 +626,27 @@ export const usePlayerCoreStore = defineStore(
       setTimeout(() => {
         audioService.setPlaybackRate(playbackRate.value);
       }, 2000);
+
+      // 监听歌曲播放完成事件
+      audioService.on('end', () => {
+        console.log('歌曲播放完成，自动播放下一首');
+        // 在私人FM模式下，需要提前获取下一首歌曲
+        const personalFM = getPersonalFMStore();
+
+        if (personalFM.isPersonalFMMode) {
+          const playlist = getPlaylistStore();
+          const currentIndex = playlist.playListIndex;
+          // 如果即将播放最后一首，提前获取新歌曲
+          if (currentIndex >= playlist.playList.length - 2) {
+            personalFM.loadPersonalFMSongs().catch((error) => {
+              console.error('提前加载私人FM歌曲失败:', error);
+            });
+          }
+        }
+        // 自动播放下一首
+        const playlist = getPlaylistStore();
+        playlist.nextPlay();
+      });
     };
 
     return {

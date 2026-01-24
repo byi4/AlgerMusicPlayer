@@ -1,5 +1,7 @@
 <template>
   <div class="recommend-music">
+    <!-- 私人FM -->
+    <personal-fm />
     <div class="title" :class="setAnimationClass('animate__fadeInLeft')">
       {{ t('comp.recommendSonglist.title') }}
     </div>
@@ -23,6 +25,7 @@
 </template>
 
 <script lang="ts" setup>
+import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { getRecommendMusic } from '@/api/home';
@@ -30,6 +33,8 @@ import SongItem from '@/components/common/SongItem.vue';
 import { usePlayerStore } from '@/store/modules/player';
 import type { IRecommendMusic } from '@/types/music';
 import { setAnimationClass, setAnimationDelay } from '@/utils';
+
+import PersonalFm from './PersonalFM.vue';
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();

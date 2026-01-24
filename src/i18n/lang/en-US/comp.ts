@@ -106,6 +106,10 @@ export default {
   recommendSonglist: {
     title: 'Weekly Hot Music'
   },
+  personalFM: {
+    title: 'Personal FM',
+    description: 'Music recommendations just for you'
+  },
   searchBar: {
     login: 'Login',
     toLogin: 'To Login',

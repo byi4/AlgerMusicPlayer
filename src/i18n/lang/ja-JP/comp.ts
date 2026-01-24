@@ -106,6 +106,10 @@ export default {
   recommendSonglist: {
     title: '今週の人気音楽'
   },
+  personalFM: {
+    title: 'パーソナルFM',
+    description: 'あなたのための専用音楽推薦'
+  },
   searchBar: {
     login: 'ログイン',
     toLogin: 'ログインへ',

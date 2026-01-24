@@ -25,6 +25,14 @@ export interface IRecommendMusic {
   category: number;
   result: SongResult[];
 }
+
+export interface IPersonalFM {
+  popAdjust: boolean;
+  data: SongResult[];
+  tag: any;
+  extTransMap: any;
+  code: number;
+}
 // 逐字歌词单词数据
 export interface IWordData {
   text: string;

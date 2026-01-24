@@ -105,6 +105,10 @@ export default {
   recommendSonglist: {
     title: '이번 주 인기 음악'
   },
+  personalFM: {
+    title: '개인 FM',
+    description: '당신을 위한 맞춤 음악 추천'
+  },
   searchBar: {
     login: '로그인',
     toLogin: '로그인하기',

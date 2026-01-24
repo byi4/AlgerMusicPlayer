@@ -18,6 +18,7 @@ pinia.use(({ store }) => {
 export * from './modules/lyric';
 export * from './modules/menu';
 export * from './modules/music';
+export * from './modules/personalFM';
 export * from './modules/player';
 export * from './modules/recommend';
 export * from './modules/search';

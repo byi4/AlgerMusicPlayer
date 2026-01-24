@@ -1,7 +1,7 @@
 import { IData } from '@/types';
 import { IAlbumNew } from '@/types/album';
 import { IDayRecommend } from '@/types/day_recommend';
-import { IRecommendMusic } from '@/types/music';
+import { IPersonalFM, IRecommendMusic } from '@/types/music';
 import { IPlayListSort } from '@/types/playlist';
 import { IHotSearch, ISearchKeyword } from '@/types/search';
 import { IHotSinger } from '@/types/singer';
@@ -49,4 +49,13 @@ export const getDayRecommend = () => {
 // 获取最新专辑推荐
 export const getNewAlbum = () => {
   return request.get<IAlbumNew>('/album/newest');
+};
+
+// 获取私人FM
+export const getPersonalFM = () => {
+  return request.get<IPersonalFM>('/personal_fm', {
+    params: {
+      timestamp: Date.now()
+    }
+  });
 };
