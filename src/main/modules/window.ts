@@ -433,14 +433,15 @@ export function createMainWindow(icon: Electron.NativeImage): BrowserWindow {
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
-
-    // 注册快捷键 打开开发者工具
-    globalShortcut.register('CommandOrControl+Shift+I', () => {
-      mainWindow.webContents.openDevTools({ mode: 'detach' });
-    });
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
+
+  // 注册快捷键打开开发者工具（开发与生产环境均可用）
+  globalShortcut.register('CommandOrControl+Shift+I', () => {
+    if (mainWindow.isDestroyed()) return;
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  });
 
   initWindowSizeHandlers(mainWindow);
 
