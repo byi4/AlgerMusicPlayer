@@ -406,7 +406,7 @@ function initializeStatusBarTray(mainWindow: BrowserWindow) {
 export function initializeTray(iconPath: string, mainWindow: BrowserWindow) {
   // 根据平台选择合适的图标
   const iconSize = process.platform === 'darwin' ? 18 : 16;
-  const iconFile = process.platform === 'darwin' ? 'icon_16x16.png' : 'icon_16x16.png';
+  const iconFile = process.platform === 'darwin' ? 'icon_16x16.png' : 'icon-tray-rounded.png';
 
   const trayIcon = nativeImage
     .createFromPath(join(iconPath, iconFile))
