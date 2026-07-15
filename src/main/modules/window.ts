@@ -32,6 +32,7 @@ const store = getSharedStore();
 // 保存主窗口引用，以便在 activate 事件中使用
 let mainWindowInstance: BrowserWindow | null = null;
 let isPlaying = false;
+let isFmPlaying = false;
 let isAppQuitting = false;
 // 保存迷你模式前的窗口状态
 let preMiniModeState: WindowState = {
@@ -78,8 +79,10 @@ function initializeProxy() {
 function setThumbarButtons(window: BrowserWindow) {
   window.setThumbarButtons([
     {
-      tooltip: 'prev',
-      icon: nativeImage.createFromPath(join(app.getAppPath(), 'resources/icons', 'prev.png')),
+      tooltip: isFmPlaying ? 'dislike' : 'prev',
+      icon: nativeImage.createFromPath(
+        join(app.getAppPath(), 'resources/icons', isFmPlaying ? 'dislike.png' : 'prev.png')
+      ),
       click() {
         window.webContents.send('global-shortcut', 'prevPlay');
       }
@@ -260,6 +263,13 @@ export function initializeWindowManager() {
 
   ipcMain.on('update-play-state', (_, playing: boolean) => {
     isPlaying = playing;
+    if (mainWindowInstance) {
+      setThumbarButtons(mainWindowInstance);
+    }
+  });
+
+  ipcMain.on('update-fm-state', (_, fmPlaying: boolean) => {
+    isFmPlaying = fmPlaying;
     if (mainWindowInstance) {
       setThumbarButtons(mainWindowInstance);
     }

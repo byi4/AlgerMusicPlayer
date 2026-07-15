@@ -84,7 +84,10 @@
     </div>
     <div class="music-buttons">
       <div class="music-buttons-prev" @click="handlePrev">
-        <i class="iconfont icon-prev"></i>
+        <i
+          class="music-buttons-icon"
+          :class="playerStore.isFmPlaying ? 'ri-dislike-line' : 'iconfont icon-prev'"
+        ></i>
       </div>
       <div class="music-buttons-play" @click="playMusicEvent">
         <i class="iconfont icon" :class="play ? 'icon-stop' : 'icon-play'"></i>
@@ -367,6 +370,11 @@ const openPlayListDrawer = () => {
   @apply mx-6 flex-1 flex justify-center;
 
   .iconfont {
+    @apply text-2xl transition;
+    @apply hover:text-green-500;
+  }
+
+  &-icon {
     @apply text-2xl transition;
     @apply hover:text-green-500;
   }

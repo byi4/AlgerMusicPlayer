@@ -101,8 +101,14 @@ export async function handleShortcutAction(action: ShortcutAction) {
         }
         break;
       case 'prevPlay':
-        await playerStore.prevPlay();
-        showToast(t('player.playBar.prev'), 'ri-skip-back-line');
+        {
+          const isFmPlaying = playerStore.isFmPlaying;
+          await playerStore.prevPlay();
+          showToast(
+            isFmPlaying ? t('comp.homeHero.fmTrash') : t('player.playBar.prev'),
+            isFmPlaying ? 'ri-dislike-line' : 'ri-skip-back-line'
+          );
+        }
         break;
       case 'nextPlay':
         await playerStore.nextPlay();

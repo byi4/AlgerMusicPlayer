@@ -32,7 +32,10 @@
       <!-- 控制按钮区域 -->
       <div class="control-buttons">
         <div class="control-button previous" @click="handlePrev">
-          <i class="iconfont icon-prev"></i>
+          <i
+            class="control-icon"
+            :class="playerStore.isFmPlaying ? 'ri-dislike-line' : 'iconfont icon-prev'"
+          ></i>
         </div>
         <div class="control-button play" @click="playMusicEvent">
           <i class="iconfont" :class="play ? 'icon-stop' : 'icon-play'"></i>
@@ -406,6 +409,10 @@ const setMusicFull = () => {
   }
 
   .iconfont {
+    @apply text-lg;
+  }
+
+  .control-icon {
     @apply text-lg;
   }
 }

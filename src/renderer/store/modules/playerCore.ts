@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { audioService } from '@/services/audioService';
 import type { AudioOutputDevice } from '@/types/audio';
@@ -46,6 +46,14 @@ export const usePlayerCoreStore = defineStore(
       play.value = value;
       window.electron?.ipcRenderer.send('update-play-state', value);
     };
+
+    watch(
+      isFmPlaying,
+      (value) => {
+        window.electron?.ipcRenderer.send('update-fm-state', value);
+      },
+      { immediate: true }
+    );
 
     /**
      * 设置全屏状态

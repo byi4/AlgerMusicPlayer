@@ -476,6 +476,22 @@ export const usePlaylistStore = defineStore(
     };
 
     /**
+     * 私人FM：将当前歌曲移至垃圾桶（不喜欢）。
+     * 失败时不阻断切歌，保持和首页 FM 不喜欢按钮一致的体验。
+     */
+    const trashCurrentFmSong = async (id: SongResult['id']) => {
+      const numericId = Number(id);
+      if (!Number.isFinite(numericId)) return;
+
+      try {
+        const { fmTrash } = await import('@/api/music');
+        await fmTrash(numericId);
+      } catch (error) {
+        console.warn('FM不喜欢失败:', error);
+      }
+    };
+
+    /**
      * @param autoEnd 是否由歌曲自然播放结束触发
      * @param fromFailover 是否由"播放失败跳歌"链触发。
      *   失败链不能重置 consecutiveFailCount，否则连续失败上限永远不会触发，
@@ -588,10 +604,11 @@ export const usePlaylistStore = defineStore(
       try {
         const playerCore = usePlayerCoreStore();
 
-        // 私人FM模式：FM 不支持回到上一首，与下一曲一致直接拉取新的 FM 歌曲（#682）
+        // 私人FM模式：上一首按钮在 FM 下表示“不喜欢”，然后切到下一首。
         if (playerCore.isFmPlaying) {
           cancelRetryTimer();
           consecutiveFailCount.value = 0;
+          await trashCurrentFmSong(playerCore.playMusic.id);
           await _nextFmPlay();
           return;
         }

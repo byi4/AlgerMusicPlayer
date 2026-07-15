@@ -35,7 +35,10 @@
         <div class="center-controls">
           <!-- 上一首 -->
           <button class="control-btn" @click="handlePrev">
-            <i class="iconfont icon-prev"></i>
+            <i
+              class="control-icon"
+              :class="playerStore.isFmPlaying ? 'ri-dislike-line' : 'iconfont icon-prev'"
+            ></i>
           </button>
 
           <!-- 播放/暂停 -->
@@ -486,6 +489,10 @@ onMounted(() => {
   }
 
   .iconfont {
+    @apply text-2xl;
+  }
+
+  .control-icon {
     @apply text-2xl;
   }
 }
