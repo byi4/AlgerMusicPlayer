@@ -11,9 +11,10 @@ interface LxHttpRequest {
   options: {
     method?: string;
     headers?: Record<string, string>;
-    body?: string;
-    form?: Record<string, string>;
-    formData?: Record<string, string>;
+    body?: any;
+    form?: Record<string, any>;
+    formData?: Record<string, any>;
+    follow_max?: number;
     timeout?: number;
   };
   requestId: string;
@@ -27,6 +28,46 @@ interface LxHttpResponse {
 
 // 取消控制器映射
 const abortControllers = new Map<string, AbortController>();
+
+const hasHeader = (headers: Record<string, string>, name: string) =>
+  Object.keys(headers).some((key) => key.toLowerCase() === name.toLowerCase());
+
+const setHeaderIfMissing = (headers: Record<string, string>, name: string, value: string) => {
+  if (!hasHeader(headers, name)) {
+    headers[name] = value;
+  }
+};
+
+const isBinaryBody = (body: any) =>
+  body instanceof ArrayBuffer || ArrayBuffer.isView(body) || typeof body?.pipe === 'function';
+
+const normalizeRequestBody = (options: LxHttpRequest['options'], fetchOptions: RequestInit) => {
+  const headers = (fetchOptions.headers || {}) as Record<string, string>;
+
+  if (options.body !== undefined && options.body !== null) {
+    if (typeof options.body === 'string' || isBinaryBody(options.body)) {
+      fetchOptions.body = options.body as any;
+    } else {
+      fetchOptions.body = JSON.stringify(options.body);
+      setHeaderIfMissing(headers, 'Content-Type', 'application/json');
+    }
+  } else if (options.form) {
+    const formData = new URLSearchParams();
+    for (const [key, value] of Object.entries(options.form)) {
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value));
+      }
+    }
+    fetchOptions.body = formData.toString();
+    setHeaderIfMissing(headers, 'Content-Type', 'application/x-www-form-urlencoded');
+  } else if (options.formData) {
+    // node-fetch 的 FormData 需要特殊处理
+    return 'formData';
+  }
+
+  fetchOptions.headers = headers;
+  return null;
+};
 
 /**
  * 初始化 HTTP 请求处理
@@ -53,25 +94,20 @@ export const initLxMusicHttp = () => {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             ...(options.headers || {})
           },
-          signal: controller.signal
+          signal: controller.signal,
+          follow: options.follow_max
         };
 
         // 处理请求体
-        if (options.body) {
-          fetchOptions.body = options.body;
-        } else if (options.form) {
-          const formData = new URLSearchParams(options.form);
-          fetchOptions.body = formData.toString();
-          fetchOptions.headers = {
-            ...fetchOptions.headers,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          };
-        } else if (options.formData) {
+        const bodyType = normalizeRequestBody(options, fetchOptions);
+        if (bodyType === 'formData' && options.formData) {
           // node-fetch 的 FormData 需要特殊处理
           const FormData = (await import('form-data')).default;
           const formData = new FormData();
           for (const [key, value] of Object.entries(options.formData)) {
-            formData.append(key, value);
+            if (value !== undefined && value !== null) {
+              formData.append(key, value);
+            }
           }
           fetchOptions.body = formData as any;
           // FormData 会自动设置 Content-Type

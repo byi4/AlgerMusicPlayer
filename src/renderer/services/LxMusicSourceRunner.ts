@@ -92,6 +92,49 @@ type PendingInvocation = {
   timeoutId: number;
 };
 
+const hasHeader = (headers: Record<string, string>, name: string) =>
+  Object.keys(headers).some((key) => key.toLowerCase() === name.toLowerCase());
+
+const setHeaderIfMissing = (headers: Record<string, string>, name: string, value: string) => {
+  if (!hasHeader(headers, name)) {
+    headers[name] = value;
+  }
+};
+
+const isBinaryBody = (body: any) => body instanceof ArrayBuffer || ArrayBuffer.isView(body);
+
+const normalizeFetchBody = (options: any, fetchOptions: RequestInit) => {
+  const headers = (fetchOptions.headers || {}) as Record<string, string>;
+
+  if (options.body !== undefined && options.body !== null) {
+    if (typeof options.body === 'string' || isBinaryBody(options.body)) {
+      fetchOptions.body = options.body as BodyInit;
+    } else {
+      fetchOptions.body = JSON.stringify(options.body);
+      setHeaderIfMissing(headers, 'Content-Type', 'application/json');
+    }
+  } else if (options.form) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(options.form)) {
+      if (value !== undefined && value !== null) {
+        params.append(key, String(value));
+      }
+    }
+    fetchOptions.body = params;
+    setHeaderIfMissing(headers, 'Content-Type', 'application/x-www-form-urlencoded');
+  } else if (options.formData) {
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(options.formData)) {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value as string);
+      }
+    }
+    fetchOptions.body = formData;
+  }
+
+  fetchOptions.headers = headers;
+};
+
 /**
  * 解析脚本头部注释中的元信息
  */
@@ -428,21 +471,7 @@ export class LxMusicSourceRunner {
       credentials: 'omit'
     };
 
-    if (options.body) {
-      fetchOptions.body = options.body;
-    } else if (options.form) {
-      fetchOptions.body = new URLSearchParams(options.form);
-      fetchOptions.headers = {
-        ...fetchOptions.headers,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      };
-    } else if (options.formData) {
-      const formData = new FormData();
-      for (const [key, value] of Object.entries(options.formData)) {
-        formData.append(key, value as string);
-      }
-      fetchOptions.body = formData;
-    }
+    normalizeFetchBody(options, fetchOptions);
 
     const timeoutId = window.setTimeout(() => {
       controller.abort();
