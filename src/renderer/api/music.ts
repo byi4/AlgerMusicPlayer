@@ -6,7 +6,7 @@ import request from '@/utils/request';
 
 import { MusicParser, type MusicParseResult } from './musicParser';
 
-const { addData, getData, deleteData } = musicDB;
+const { saveData, getData } = musicDB;
 
 // 将 FM 歌曲移至垃圾桶（不喜欢）
 export const fmTrash = (id: number) => {
@@ -73,12 +73,9 @@ export const getMusicLrc = async (id: number) => {
     // 获取新的歌词数据
     const res = await request.get<ILyric>('/lyric/new', { params: { id } });
 
-    // 只有在成功获取新数据后才删除旧缓存并添加新缓存
+    // 只有在成功获取新数据后才覆盖缓存
     if (res?.data) {
-      if (cachedLyric) {
-        await deleteData('music_lyric', id);
-      }
-      addData('music_lyric', { id, data: res.data, createTime: Date.now() });
+      await saveData('music_lyric', { id, data: res.data, createTime: Date.now() });
     }
 
     return res;
