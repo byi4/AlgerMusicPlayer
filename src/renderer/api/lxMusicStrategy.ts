@@ -13,6 +13,9 @@ import type { SongResult } from '@/types/music';
 import type { MusicParseResult } from './musicParser';
 import { CacheManager } from './musicParser';
 
+const AUDIO_URL_CACHE_TIME = 10 * 60 * 1000;
+const audioUrlCache = new Map<string, { url: string | null; expiresAt: number }>();
+
 /**
  * 解析可能是 API 端点的 URL，获取真实音频 URL
  * 一些音源脚本返回的是 API 端点，需要额外请求才能获取真实音频 URL
@@ -31,6 +34,11 @@ const resolveAudioUrl = async (url: string): Promise<string | null> => {
     return url;
   }
 
+  const cached = audioUrlCache.get(url);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.url;
+  }
+
   console.log('[LxMusicStrategy] 检测到 API 端点，尝试解析真实 URL:', url);
 
   // 非 Electron 环境无法绕过 CORS 验证，保持乐观返回
@@ -46,7 +54,8 @@ const resolveAudioUrl = async (url: string): Promise<string | null> => {
         method: 'GET',
         // 端点若直接返回音频流，用 Range 避免整段下载；返回 JSON 时 8KB 也足够
         headers: { Range: 'bytes=0-8191' },
-        timeout: 15000
+        timeout: 8000,
+        maxBodyBytes: 8192
       },
       requestId
     });
@@ -56,6 +65,7 @@ const resolveAudioUrl = async (url: string): Promise<string | null> => {
 
     if (status < 200 || status >= 400) {
       console.warn(`[LxMusicStrategy] API 端点返回 ${status}，判定解析失败`);
+      audioUrlCache.set(url, { url: null, expiresAt: Date.now() + 60 * 1000 });
       return null;
     }
 
@@ -63,6 +73,7 @@ const resolveAudioUrl = async (url: string): Promise<string | null> => {
     // audio 元素可以直接播放原始 URL
     if (contentType.includes('audio/') || contentType.includes('application/octet-stream')) {
       console.log('[LxMusicStrategy] API 端点为音频流，直接使用原始 URL');
+      audioUrlCache.set(url, { url, expiresAt: Date.now() + AUDIO_URL_CACHE_TIME });
       return url;
     }
 
@@ -72,15 +83,18 @@ const resolveAudioUrl = async (url: string): Promise<string | null> => {
       const audioUrl = body.url || body.data?.url || body.audio_url || body.link || body.src;
       if (audioUrl && typeof audioUrl === 'string') {
         console.log('[LxMusicStrategy] 从 JSON 中提取音频 URL:', audioUrl);
+        audioUrlCache.set(url, { url: audioUrl, expiresAt: Date.now() + AUDIO_URL_CACHE_TIME });
         return audioUrl;
       }
     }
 
     // 2xx 但既不是音频也提取不到 URL（如 HTML 错误页），视为不可播放
     console.warn('[LxMusicStrategy] API 端点响应无法解析为音频，判定解析失败');
+    audioUrlCache.set(url, { url: null, expiresAt: Date.now() + 60 * 1000 });
     return null;
   } catch (error) {
     console.error('[LxMusicStrategy] URL 解析请求失败:', error);
+    audioUrlCache.set(url, { url: null, expiresAt: Date.now() + 60 * 1000 });
     return null;
   }
 };

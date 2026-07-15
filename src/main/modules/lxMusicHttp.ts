@@ -15,6 +15,7 @@ interface LxHttpRequest {
     form?: Record<string, any>;
     formData?: Record<string, any>;
     follow_max?: number;
+    maxBodyBytes?: number;
     timeout?: number;
   };
   requestId: string;
@@ -67,6 +68,37 @@ const normalizeRequestBody = (options: LxHttpRequest['options'], fetchOptions: R
 
   fetchOptions.headers = headers;
   return null;
+};
+
+const readResponseText = async (response: any, maxBodyBytes?: number): Promise<string> => {
+  if (!maxBodyBytes || maxBodyBytes <= 0) {
+    return await response.text();
+  }
+
+  const body = response.body;
+  if (!body) {
+    return '';
+  }
+
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+
+  for await (const chunk of body as AsyncIterable<Buffer | string>) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    const remainingBytes = maxBodyBytes - totalBytes;
+
+    if (remainingBytes > 0) {
+      chunks.push(buffer.subarray(0, remainingBytes));
+    }
+
+    totalBytes += buffer.length;
+    if (totalBytes >= maxBodyBytes) {
+      body.destroy?.();
+      break;
+    }
+  }
+
+  return Buffer.concat(chunks).toString('utf8');
 };
 
 /**
@@ -127,7 +159,7 @@ export const initLxMusicHttp = () => {
         console.log(`[LxMusicHttp] 响应: ${response.status} ${url}`);
 
         // 读取响应体
-        const rawBody = await response.text();
+        const rawBody = await readResponseText(response, options.maxBodyBytes);
 
         // 尝试解析 JSON
         let parsedBody: any = rawBody;

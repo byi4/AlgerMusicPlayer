@@ -29,6 +29,18 @@ const getSongArtistText = (songData: SongResult): string => {
   return '';
 };
 
+const isOnlyLxMusicSource = (sources: unknown): boolean => {
+  return Array.isArray(sources) && sources.length === 1 && sources[0] === 'lxMusic';
+};
+
+const hasActiveLxMusicScript = (settingsStore: any): boolean => {
+  const activeLxApiId = settingsStore.setData?.activeLxMusicApiId;
+  if (!activeLxApiId) return false;
+
+  const scripts = settingsStore.setData?.lxMusicScripts || [];
+  return scripts.some((script: any) => script.id === activeLxApiId && script.script);
+};
+
 const resolveCachedPlaybackUrl = async (
   url: string | null | undefined,
   songData: SongResult
@@ -152,6 +164,35 @@ export const getSongUrl = async (
           throw error;
         }
         console.error('自定义音源解析出错:', error);
+      }
+    }
+
+    if (
+      isOnlyLxMusicSource(globalSources) &&
+      settingsStore.setData.enableMusicUnblock &&
+      hasActiveLxMusicScript(settingsStore)
+    ) {
+      try {
+        console.log(`仅启用落雪音源，跳过官方URL请求，直接解析歌曲 ID: ${id}`);
+        const res = await getParsingMusicUrl(numericId, songData);
+
+        if (requestId && !playbackRequestManager.isRequestValid(requestId)) {
+          console.log(`[getSongUrl] 落雪音源解析后请求已失效: ${requestId}`);
+          throw new Error('Request cancelled');
+        }
+
+        if (isDownloaded) return res?.data?.data as any;
+        const parsedUrl = res?.data?.data?.url || null;
+        if (parsedUrl) {
+          return await resolveCachedPlaybackUrl(parsedUrl, songData);
+        }
+
+        console.warn('落雪音源解析失败，继续尝试官方URL');
+      } catch (error) {
+        if ((error as Error).message === 'Request cancelled') {
+          throw error;
+        }
+        console.error('落雪音源解析出错，继续尝试官方URL:', error);
       }
     }
 
