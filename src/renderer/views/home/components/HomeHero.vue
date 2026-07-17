@@ -268,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onActivated, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -385,6 +385,13 @@ const fetchFmSongs = async (retries = 3): Promise<any[]> => {
 /** Load current + preload next FM song */
 const loadFmSongs = async () => {
   if (fmLoading.value) return;
+
+  if (playerCoreStore.isFmPlaying && playerCoreStore.currentSong?.id) {
+    fmCurrentSong.value = playerCoreStore.currentSong;
+    await preloadNextFm();
+    return;
+  }
+
   fmLoading.value = true;
   try {
     const songs = await fetchFmSongs();
@@ -409,6 +416,18 @@ const preloadNextFm = async () => {
     // silent
   }
 };
+
+watch(
+  () => [playerCoreStore.isFmPlaying, playerCoreStore.currentSong?.id] as const,
+  ([isFmPlaying, currentSongId]) => {
+    if (!isFmPlaying || !currentSongId || fmCurrentSong.value?.id === currentSongId) return;
+
+    fmCurrentSong.value = playerCoreStore.currentSong;
+    fmNextSong.value = null;
+    void preloadNextFm();
+  },
+  { immediate: true }
+);
 
 /** Play/pause current FM song */
 const handleFmPlay = async () => {
